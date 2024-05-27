@@ -1,0 +1,3 @@
+scipy
+libigl
+robust-laplacian

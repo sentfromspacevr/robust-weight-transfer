@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'  # Trigger on any new tag
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.event.repository.name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"  # Use any Python version for this step
+
+      - name: Install and upgrade pip
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Create releases
+        run: |
+          platforms=("win_amd64" "macosx_12_0_arm64" "macosx_10_13_x86_64" "manylinux2014_x86_64")
+          platform_names=("windows" "macos-m" "macos-intel" "linux")
+          python_versions=("310" "311" "39")
+          python_versions_labels=("bl3.1-4.0" "bl4.1" "bl2.9-3.0")
+          gh release create ${{ github.ref_name }} -R ${{ github.repository }}
+
+          for i in "${!platforms[@]}"; do
+              platform="${platforms[$i]}"
+              platform_name="${platform_names[$i]}"
+              for j in "${!python_versions[@]}"; do
+                  py_version="${python_versions[$j]}"
+                  py_label="${python_versions_labels[$j]}"
+                  if [[ "$py_version" == "39" && "$platform" == "macosx_12_0_arm64" ]]; then
+                      echo "Skipping macosx_12_0_arm64 for Python 3.9"
+                      continue
+                  fi
+
+                  file_name="${{ github.event.repository.name }}-${{ github.ref_name }}-${py_label}-${platform_name}.zip"
+                  echo "Downloading for Python ${py_version} on ${platform_name}"
+                  
+                  if [[ "$py_version" == "39" ]]; then
+                      pip download --platform "$platform" --python-version "$py_version" --only-binary=:all: -d whl -c <(echo "numpy<=1.19.5") -r ${{ github.event.repository.name }}/requirements.txt
+                      rm whl/numpy*
+                  else
+                      pip download --platform "$platform" --python-version "$py_version" --only-binary=:all: --no-deps -d whl -r ${{ github.event.repository.name }}/requirements.txt
+                  fi
+                  
+                  mkdir -p ${{ github.event.repository.name }}/deps
+                  for whl in whl/*.whl; do
+                      unzip -q "$whl" -d ${{ github.event.repository.name }}/deps/
+                  done
+                  rm -rf whl
+                  zip -r "$file_name" ${{ github.event.repository.name }} -x "*.git*"
+                  gh release upload ${{ github.ref_name }} "$file_name" -R ${{ github.repository }}
+                  rm -rf "${{ github.event.repository.name }}/deps" "$file_name"
+              done
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
