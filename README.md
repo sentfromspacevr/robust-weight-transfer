@@ -22,7 +22,7 @@ With this `pip` command you can control which platform and for which Python vers
 ```
 pip download --platform win_amd64 --python-version 310 --only-binary=:all: --no-deps -d whl -r requirements.txt
 ```
-The wheels get downloaded into the `whl` directory. From here you can unzip the content of the wheels into the `deps` directory
+The dependency wheels get downloaded into the `whl` directory. From here you can unzip the content of the wheels into the `deps` directory
 
 ### VS Code Blender Extension
 
@@ -40,7 +40,7 @@ Changes to the original work:
 - Allow flipped normals 
     - Handles solid meshes when vertex normals show into opposite direction of the vertex normals on the body
 - Remesh using Robust Laplacian's point cloud Laplacian (During Point mode)
-    - Workarounds `libigl.min_quad_with_fixed` failing during Inpaint when a disconnected match doesn't have any known values/matches
+    - Workarounds `libigl.min_quad_with_fixed` failing during Inpaint when a disconnected mesh doesn't have any known values/matches
 
 
 
