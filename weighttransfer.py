@@ -2,6 +2,7 @@ import igl
 import numpy as np
 import scipy as sp
 import robust_laplacian
+# import cholespy
 
 
 def find_closest_point_on_surface(P, V, F):
@@ -114,7 +115,7 @@ def find_matches_closest_surface(source_verts, source_triangles, source_normals,
     return Matched, W2
 
 
-def inpaint(V2, F2, W2, Matched, point_cloud):
+def inpaint(L, M, W2, Matched):
     """
     Inpaint weights for all the vertices on the target mesh for which  we didnt 
     find a good match on the source (i.e. Matched[i] == False).
@@ -129,12 +130,6 @@ def inpaint(V2, F2, W2, Matched, point_cloud):
         W_inpainted: #V2 by num_bones, final skinning weights where we inpainted weights for all vertices i where Matched[i] == False
     """
     
-    if point_cloud:
-        L, M = robust_laplacian.point_cloud_laplacian(V2)
-    else:
-        L, M = robust_laplacian.mesh_laplacian(V2, F2)
-    L = -L # igl and robust_laplacian have different laplacian conventions
-    
     Minv = sp.sparse.diags(1 / M.diagonal()) # divide by zero?
 
     Q2 = -L + L*Minv*L
@@ -144,12 +139,12 @@ def inpaint(V2, F2, W2, Matched, point_cloud):
     Beq = np.array([], dtype=np.float64)
     B = np.zeros(shape = (L.shape[0], W2.shape[1]), dtype=np.float64)
 
-    b = np.array(range(0, int(V2.shape[0])), dtype=np.int64)
+    b = np.array(range(0, int(L.shape[0])), dtype=np.int64)
     b = b[Matched]
     bc = W2[Matched,:].astype(np.float64)
     result, W_inpainted = igl.min_quad_with_fixed(Q2, B, b, bc, Aeq, Beq, True)
     W_inpainted = W_inpainted.astype(np.float32)
-    return result, W_inpainted # TODO: Add results
+    return result, W_inpainted
     
     
 def limit_mask(weights, adjacency_matrix, dilation_repeat=5):
@@ -173,8 +168,9 @@ def limit_mask(weights, adjacency_matrix, dilation_repeat=5):
     
     return erode_mask.toarray()
 
+import time
 
-def smooth_weigths(verts, weights, matched, adjacency_matrix, adjacency_list, num_smooth_iter_steps, smooth_alpha, distance_threshold):
+def smooth_weigths(verts, weights, matched, L, M, adjacency_list, num_smooth_iter_steps, smooth_alpha, distance_threshold):
     not_matched = ~matched
     VIDs_to_smooth = np.zeros(verts.shape[0], dtype=bool)
 
@@ -198,13 +194,32 @@ def smooth_weigths(verts, weights, matched, adjacency_matrix, adjacency_list, nu
         if not_matched[i]:
             get_points_within_distance(verts, i, distance_threshold)
             
-    adj_mat = adjacency_matrix.astype(np.float32)
-    degrees = adj_mat.sum(axis=1)
+    start_time = time.time()
+
+    # adj_mat = adjacency_matrix.astype(np.float32)
+    # degrees = adj_mat.sum(axis=1)
     
-    smooth_mat = sp.sparse.diags(1/degrees) @ adj_mat
-    weights_smoothed = sp.sparse.csr_array(weights)
+    # smooth_mat = sp.sparse.diags(1/degrees) @ adj_mat
+    # weights_smoothed = sp.sparse.csr_array(weights)
+    # for _ in range(num_smooth_iter_steps):
+    #     weights_smoothed = (1 - smooth_alpha) * weights_smoothed + smooth_alpha * (smooth_mat @ weights_smoothed)
+    #     weights_smoothed[~VIDs_to_smooth] = weights[~VIDs_to_smooth]
+    # print('time:', time.time() - start_time)
+    # return weights_smoothed.todense()
+    
+    # weights_smoothed = sp.sparse.csr_array(weights)
+    
+    start_time = time.time()
+    A = M - smooth_alpha/10000 * L
+    solver = sp.sparse.linalg.splu(A)
+    # solver = cholespy.CholeskySolverD(A.shape[0], A.indptr, A.indices, A.data, cholespy.MatrixType.CSC)
+    print('factor:', time.time() - start_time)
+    weights_smoothed = np.copy(weights)
+    M = M.tocsr()
     for _ in range(num_smooth_iter_steps):
-        weights_smoothed = (1 - smooth_alpha) * weights_smoothed + smooth_alpha * (smooth_mat @ weights_smoothed)
+        rhs = M @ weights_smoothed
+        # solver.solve(rhs, weights_smoothed)
+        weights_smoothed = solver.solve(rhs)
         weights_smoothed[~VIDs_to_smooth] = weights[~VIDs_to_smooth]
-    return weights_smoothed.todense()
-            
+    print('time:', time.time() - start_time)
+    return weights_smoothed

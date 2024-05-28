@@ -22,6 +22,7 @@ import numpy as np
 from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
 import webbrowser
 import math
+import robust_laplacian
 
 from . import util
 
@@ -102,18 +103,22 @@ class RobustWeightTransfer(bpy.types.Operator):
                     self.report({'ERROR'}, f'{obj.name} has too many vertex colors. Delete one or deactive Visualize Rejected Weights.')
                     return {'CANCELLED'}
 
-                
-            result, weights = inpaint(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
+            if scene_settings.inpaint_mode == 'POINT':
+                L, M = robust_laplacian.point_cloud_laplacian(verts)
+            else:
+                L, M = robust_laplacian.mesh_laplacian(verts, triangles)
+            L = -L # igl and robust_laplacian have different laplacian conventions    
+            result, weights = inpaint(L, M, weights, matched_verts)
             if not result:
                 self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
                 return {'CANCELLED'}
             
-            adj_mat = util.get_mesh_adjacency_matrix_sparse(obj.data, include_self=True)
             if scene_settings.smoothing_enable:
                 adj_list = util.get_mesh_adjacency_list(obj.data)
-                weights = smooth_weigths(verts, weights, matched_verts, adj_mat, adj_list, scene_settings.smoothing_repeat, scene_settings.smoothing_factor, scene_settings.max_distance)
+                weights = smooth_weigths(verts, weights, matched_verts, L, M, adj_list, scene_settings.smoothing_repeat, scene_settings.smoothing_factor, scene_settings.max_distance)
             
             if scene_settings.enforce_four_bone_limit:
+                adj_mat = util.get_mesh_adjacency_matrix_sparse(obj.data, include_self=True)
                 weights[weights <= 0.0001] = 0
                 mask = limit_mask(weights, adj_mat)
                 weights = (1 - mask) * weights
