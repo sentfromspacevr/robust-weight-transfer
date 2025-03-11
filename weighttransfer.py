@@ -1,3 +1,9 @@
+# This code is based on https://github.com/rin-23/RobustSkinWeightsTransferCode/blob/main/src/utils.py
+# by Rinat Abdrashitov (MIT License)
+# 
+# Changes were made to make the code compatible with Blender's data structures
+# and to improve performance and robustness
+
 import igl
 import numpy as np
 import scipy as sp
