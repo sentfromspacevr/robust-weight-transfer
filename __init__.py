@@ -385,11 +385,9 @@ class RobustWeightTransferPanel(bpy.types.Panel):
                 installed_deps = True
                 return
             
-            
             col.label(text="Blender will be unreactive while installing")
             col.operator("wm.install_rwt_dependencies", icon='IMPORT')
-            col.label(text="This might take a few minutes")
-            col.label(text="After installing, restart Blender", icon='INFO')
+            col.label(text="This might take a few minutes", icon='INFO')
             return
 
         active_obj = context.object
