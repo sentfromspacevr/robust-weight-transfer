@@ -6,7 +6,7 @@ Robust Weight Transfer can successfully transfer weights from the body, without 
 
 Weight transfer code is based on https://github.com/rin-23/RobustSkinWeightsTransferCode/tree/main
 
-You can find a tutorial on the Gumroad page of the addon https://sentfromspacevr.gumroad.com/l/robust-weight-transfer
+You can find a tutorial on the Jinxxy page of the addon https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer
 
 ## Development
 
