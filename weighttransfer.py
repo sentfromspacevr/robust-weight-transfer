@@ -161,12 +161,12 @@ def inpaint(V2, F2, W2, Matched, point_cloud):
     return result, W_inpainted # TODO: Add results
     
     
-def limit_mask(weights, adjacency_matrix, dilation_repeat=5):
-    if weights.shape[1] <= 4: return np.zeros_like(weights)
+def limit_mask(weights, adjacency_matrix, dilation_repeat=5, limit_num=4):
+    if weights.shape[1] <= limit_num: return np.zeros_like(weights)
     
     count = np.count_nonzero(weights, axis=1)
-    to_limit = count > 4
-    k = weights.shape[1] - 4
+    to_limit = count > limit_num
+    k = weights.shape[1] - limit_num
     weights_inds = np.argpartition(weights, kth=k, axis=1)[:, :k]
     row_indices = np.arange(weights.shape[0])[:, None]
     erode_mask = np.zeros_like(weights, dtype=bool)

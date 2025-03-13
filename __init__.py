@@ -121,7 +121,7 @@ class RobustWeightTransfer(bpy.types.Operator):
             
             if scene_settings.enforce_four_bone_limit:
                 weights[weights <= 0.0001] = 0
-                mask = limit_mask(weights, adj_mat)
+                mask = limit_mask(weights, adj_mat, limit_num=scene_settings.num_limit_groups)
                 weights = (1 - mask) * weights
                 weights[weights <= 0.0001] = 0
             
@@ -305,8 +305,8 @@ class SceneSettingsGroup(bpy.types.PropertyGroup):
         name='Visualize Rejected Weights',
         description='Draws rejected weights as a pink to the vertex color layer "RBT Matched". After each transfer it will set the vertex color layer to active and change the Viewport Shading to Solid, with Color set to Attribute')
     enforce_four_bone_limit: bpy.props.BoolProperty(
-        name='Limit to 4 Bones per Vertex',
-        description='Limit a vertex to being influenced by 4 bones or less. This is useful when mesh will be exported to game engines like Unity, that normally only support 4 bones per vertex',
+        name='Limit Groups per Vertex',
+        description='Limit a vertex to being influenced to a specific amount of groups. This is useful when a mesh will be exported to game engines like Unity, that normally only support 4 bones per vertex',
         default=True,
         update=update_enforce_four_bone_limit)
     group_selection: bpy.props.EnumProperty(
@@ -338,6 +338,12 @@ class SceneSettingsGroup(bpy.types.PropertyGroup):
         name='Limited vertices to Vertex Group',
         description='Visualize the vertices that got limited by writing to the "Limited" vertex group',
         default=False)
+    num_limit_groups: bpy.props.IntProperty(
+        name="Max groups per vertex",
+        description="Amount of groups a vertex should be limited to. For VRChat/Unity keep it at 4.",
+        min=1,
+        default=4
+    )
 
     
 class RobustWeightTransferPanel(bpy.types.Panel):
@@ -436,7 +442,6 @@ class SettingsPanel(bpy.types.Panel):
         layout.operator('object.rbt_reset_scene_settings', icon='LOOP_BACK', text='Reset to Defaults')
         layout.prop(settings, 'inpaint_mode')
         layout.prop(settings, 'draw_matched')
-        layout.prop(settings, 'enforce_four_bone_limit')
         row = layout.row()
         row.enabled = not settings.enforce_four_bone_limit
         row.prop(settings, 'group_selection', text='Subset')
@@ -478,6 +483,25 @@ class SmoothingPanel(bpy.types.Panel):
         col = self.layout.column(align=True)
         col.prop(settings, 'smoothing_enable', text='')
 
+class LimitGroupsPanel(bpy.types.Panel):
+    bl_label = "Limit Vertex Groups"
+    bl_idname = "OBJECT_PT_limit_groups"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'SENT'
+    bl_parent_id = 'OBJECT_PT_robust_weight_transfer_settings_panel'
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.robust_weight_transfer_settings
+        layout.enabled = settings.enforce_four_bone_limit
+        layout.prop(settings, 'num_limit_groups')
+        
+    def draw_header(self, context: bpy.types.Context):
+        settings = context.scene.robust_weight_transfer_settings
+        col = self.layout.column(align=True)
+        col.prop(settings, 'enforce_four_bone_limit', text='')
+
 
 class ResetSceneSettings(bpy.types.Operator):
     """Reset all settings to their default values"""
@@ -515,10 +539,10 @@ class UtilitiesPanel(bpy.types.Panel):
     
 
 class SmoothLimit(bpy.types.Operator):
-    """Limit weights of active vertices to 4 Bones"""
+    """Limit weights of to a specific amount"""
     bl_idname = "object.smooth_limit_weights"
-    bl_label = "Smoothed Limit to 4 Bones"
-    bl_description = "Limits the weights of the vertices of the active object to 4 bones"
+    bl_label = "Smoothed Limit Vertex Groups"
+    bl_description = "Limits the amount weights per vertex of the active object"
     bl_options = {'REGISTER', 'UNDO'}
     
     @classmethod
@@ -535,7 +559,7 @@ class SmoothLimit(bpy.types.Operator):
         is_deform = [util.is_vertex_group_deform_bone(obj, g.name) for g in obj.vertex_groups]
         W = util.get_groups_arr(obj, is_deform)
         adj_mat = util.get_mesh_adjacency_matrix_sparse(obj.data, True)
-        mask = limit_mask(W, adj_mat)
+        mask = limit_mask(W, adj_mat, limit_num=scene_settings.num_limit_groups)
         W = (1 - mask) * W
         util.write_weights(obj, W[:, is_deform], [group.name for i, group in enumerate(obj.vertex_groups) if is_deform[i]], 0.0001)
         if scene_settings.smooth_limit_debug:
@@ -655,6 +679,7 @@ def register():
     bpy.utils.register_class(RobustWeightTransferPanel)
     bpy.utils.register_class(SettingsPanel)
     bpy.utils.register_class(VertexMappingPanel)
+    bpy.utils.register_class(LimitGroupsPanel)
     bpy.utils.register_class(SmoothingPanel)
     bpy.utils.register_class(ObjectSettingsGroup)
     bpy.utils.register_class(SceneSettingsGroup)
@@ -680,6 +705,7 @@ def unregister():
     bpy.utils.unregister_class(RobustWeightTransferPanel)
     bpy.utils.unregister_class(SettingsPanel)
     bpy.utils.unregister_class(VertexMappingPanel)
+    bpy.utils.unregister_class(LimitGroupsPanel)
     bpy.utils.unregister_class(SmoothingPanel)
     bpy.utils.unregister_class(ObjectSettingsGroup)
     bpy.utils.unregister_class(SceneSettingsGroup)
