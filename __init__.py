@@ -641,7 +641,6 @@ class SentFromSpacePanel(bpy.types.Panel):
         bpy.utils.register_class(cls)
 
         logo_path = os.path.join(os.path.dirname(__file__), "third-logo-icon.png")
-        img = bpy.data.images.load(logo_path, check_existing=True)
         
         pcoll = bpy.utils.previews.new()
         pcoll.load("third_logo", logo_path, "IMAGE")
