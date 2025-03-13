@@ -41,7 +41,11 @@ class RobustWeightTransfer(bpy.types.Operator):
         scene_settings: SceneSettingsGroup = context.scene.robust_weight_transfer_settings
         if not scene_settings.source_object: return False
         if not scene_settings.apply_to_selected and scene_settings.source_object == context.active_object: return False
-        if scene_settings.source_object and scene_settings.group_selection == 'DEFORM_POSE_BONES' and not util.has_modifier(scene_settings.source_object, 'ARMATURE'): return False
+        if scene_settings.group_selection == 'DEFORM_POSE_BONES':
+            armature_mods = [mod for mod in scene_settings.source_object.modifiers if mod.type == "ARMATURE"]
+            if len(armature_mods) != 1: return False # no armature modifier or more than one
+            if not armature_mods[0].object: return False
+
             
         objs = lambda x: [obj for obj in x if obj != scene_settings.source_object and isinstance(obj.data, bpy.types.Mesh)]
         if scene_settings.apply_to_selected:
@@ -80,11 +84,11 @@ class RobustWeightTransfer(bpy.types.Operator):
         if scene_settings.use_deformed_source:
             source_obj = source_obj.evaluated_get(depsgraph)
         
-        weights_all = []
+        weights_all = [] # (num_objs, (num_vertices, num_weights))
         source_verts, source_triangles, source_normals = util.get_obj_arrs_world(source_obj)
         deform_only = scene_settings.group_selection == 'DEFORM_POSE_BONES'
         is_deform = [util.is_vertex_group_deform_bone(source_obj, g.name) for g in source_obj.vertex_groups]
-        source_weights = util.get_groups_arr(source_obj, is_deform if deform_only else None)
+        source_weights = util.get_groups_arr(source_obj, is_deform if deform_only else None) # (num_verts, )
         for obj in target_objs:
             object_settings: ObjectSettingsGroup = obj.robust_weight_transfer_settings
             verts, triangles, normals = util.get_obj_arrs_world(obj.evaluated_get(depsgraph) if scene_settings.use_deformed_target else obj)
@@ -384,11 +388,21 @@ class RobustWeightTransferPanel(bpy.types.Panel):
             col.label(text='  Deactivate Use Deformed Target or apply/delete modifier.', icon='MODIFIER')
             
         source_obj = settings.source_object
-        # TODO: Handle multiple Armature Modifiers & missing Armature object
-        if source_obj and settings.group_selection == 'DEFORM_POSE_BONES' and not util.has_modifier(source_obj, 'ARMATURE'):
-            col = layout.column(align=True)
-            col.label(text=f'Subset is set to Deform Pose Bones,', icon='ERROR')
-            col.label(text=f'but {source_obj.name} has no Armature Modifier')
+        if source_obj:
+            armature_mods = [mod for mod in source_obj.modifiers if mod.type == "ARMATURE"]
+            if len(armature_mods) == 0:
+                col = layout.column(align=True)
+                col.label(text=f'Subset is set to Deform Pose Bones,', icon='ERROR')
+                col.label(text=f'but {source_obj.name} has no Armature Modifier')
+            elif len(armature_mods) == 1:
+                if not armature_mods[0].object:
+                    col = layout.column(align=True)
+                    col.label(text=f'Subset is set to Deform Pose Bones,', icon='ERROR')
+                    col.label(text=f'but {source_obj.name} has an empty Armature Modifier object')
+            else:
+                col = layout.column(align=True)
+                col.label(text=f'Subset is set to Deform Pose Bones,', icon='ERROR')
+                col.label(text=f'but {source_obj.name} has multiple Armature Modifiers')
             
         row = layout.row(align=True)
         row.prop(settings, 'apply_to_selected', text='', icon='RESTRICT_SELECT_OFF')
