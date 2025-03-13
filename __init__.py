@@ -736,20 +736,22 @@ def register():
     # bpy.types.VIEW3D_MT_make_links.append(menu_func)
     bpy.utils.register_class(RobustWeightTransfer)
     bpy.utils.register_class(RobustWeightTransferPanel)
-    bpy.utils.register_class(SettingsPanel)
-    bpy.utils.register_class(VertexMappingPanel)
-    bpy.utils.register_class(LimitGroupsPanel)
-    bpy.utils.register_class(SmoothingPanel)
-    bpy.utils.register_class(ObjectSettingsGroup)
-    bpy.utils.register_class(SceneSettingsGroup)
-    bpy.utils.register_class(SelectNonMatched)
-    bpy.utils.register_class(ResetSceneSettings)
-    bpy.utils.register_class(UtilitiesPanel)
-    bpy.utils.register_class(SmoothLimit)
-    bpy.utils.register_class(InstallDependencies)
-    bpy.types.Object.robust_weight_transfer_settings = bpy.props.PointerProperty(type=ObjectSettingsGroup)
-    bpy.types.Scene.robust_weight_transfer_settings = bpy.props.PointerProperty(type=SceneSettingsGroup)
-    
+    if missing_deps:
+        bpy.utils.register_class(InstallDependencies)
+    else:
+        bpy.utils.register_class(SettingsPanel)
+        bpy.utils.register_class(VertexMappingPanel)
+        bpy.utils.register_class(LimitGroupsPanel)
+        bpy.utils.register_class(SmoothingPanel)
+        bpy.utils.register_class(ObjectSettingsGroup)
+        bpy.utils.register_class(SceneSettingsGroup)
+        bpy.utils.register_class(SelectNonMatched)
+        bpy.utils.register_class(ResetSceneSettings)
+        bpy.utils.register_class(UtilitiesPanel)
+        bpy.utils.register_class(SmoothLimit)
+        bpy.types.Object.robust_weight_transfer_settings = bpy.props.PointerProperty(type=ObjectSettingsGroup)
+        bpy.types.Scene.robust_weight_transfer_settings = bpy.props.PointerProperty(type=SceneSettingsGroup)
+        
     if 'VIEW3D_PT_sent_from_space_panel' in dir(bpy.types):
         if SentFromSpacePanel.version > bpy.types.VIEW3D_PT_sent_from_space_panel.version:
             bpy.types.VIEW3D_PT_sent_from_space_panel.unregister()
@@ -763,19 +765,21 @@ def unregister():
     # bpy.types.VIEW3D_MT_make_links.remove(menu_func)
     bpy.utils.unregister_class(RobustWeightTransfer)
     bpy.utils.unregister_class(RobustWeightTransferPanel)
-    bpy.utils.unregister_class(SettingsPanel)
-    bpy.utils.unregister_class(VertexMappingPanel)
-    bpy.utils.unregister_class(LimitGroupsPanel)
-    bpy.utils.unregister_class(SmoothingPanel)
-    bpy.utils.unregister_class(ObjectSettingsGroup)
-    bpy.utils.unregister_class(SceneSettingsGroup)
-    bpy.utils.unregister_class(SelectNonMatched)
-    bpy.utils.unregister_class(ResetSceneSettings)
-    bpy.utils.unregister_class(UtilitiesPanel)
-    bpy.utils.unregister_class(SmoothLimit)
-    bpy.utils.unregister_class(InstallDependencies)
-    del bpy.types.Object.robust_weight_transfer_settings
-    del bpy.types.Scene.robust_weight_transfer_settings
+    if missing_deps:
+        bpy.utils.unregister_class(InstallDependencies)
+    else:
+        bpy.utils.unregister_class(SettingsPanel)
+        bpy.utils.unregister_class(VertexMappingPanel)
+        bpy.utils.unregister_class(LimitGroupsPanel)
+        bpy.utils.unregister_class(SmoothingPanel)
+        bpy.utils.unregister_class(ObjectSettingsGroup)
+        bpy.utils.unregister_class(SceneSettingsGroup)
+        bpy.utils.unregister_class(SelectNonMatched)
+        bpy.utils.unregister_class(ResetSceneSettings)
+        bpy.utils.unregister_class(UtilitiesPanel)
+        bpy.utils.unregister_class(SmoothLimit)
+        del bpy.types.Object.robust_weight_transfer_settings
+        del bpy.types.Scene.robust_weight_transfer_settings
     SentFromSpacePanel._unregister()
     
 
