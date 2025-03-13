@@ -155,6 +155,9 @@ def inpaint(V2, F2, W2, Matched, point_cloud):
     bc = W2[Matched,:].astype(np.float64)
     result, W_inpainted = igl.min_quad_with_fixed(Q2, B, b, bc, Aeq, Beq, True)
     W_inpainted = W_inpainted.astype(np.float32)
+    # when W2 shape = (num_verts, 1), it gets flattened to (num_verts, )
+    # reshape it back to initial shape, limit_mask expects 2d array
+    W_inpainted = W_inpainted.reshape(W2.shape)
     return result, W_inpainted # TODO: Add results
     
     
