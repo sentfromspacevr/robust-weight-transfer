@@ -17,15 +17,32 @@ if libs_path not in sys.path:
 
 import bpy
 import bmesh
-import igl
 import numpy as np
-from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
 import webbrowser
 import math
+import importlib
+import subprocess
+
 
 import bpy.utils.previews
 
-from . import util
+
+DEPENDENCIES = ["robust_laplacian", "igl", "scipy"]
+missing_deps = []
+for module in DEPENDENCIES:
+    try:
+        importlib.import_module(module)
+    except ImportError:
+        if module == "igl":
+            missing_deps.append("libigl")
+        else:
+            missing_deps.append(module)
+
+installed_deps = False
+
+if not missing_deps:
+    from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
+    from . import util
 
 
 class RobustWeightTransfer(bpy.types.Operator):
@@ -345,7 +362,7 @@ class SceneSettingsGroup(bpy.types.PropertyGroup):
         default=4
     )
 
-    
+
 class RobustWeightTransferPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "Robust Weight Transfer"
@@ -357,6 +374,24 @@ class RobustWeightTransferPanel(bpy.types.Panel):
 
     def draw(self, context): 
         layout = self.layout
+
+        if missing_deps:
+            box = layout.box()
+            col = box.column()
+            global installed_deps
+            if installed_deps:
+                col.label(text="Dependencies installed!", icon='INFO')
+                col.label(text="Restart Blender!", icon='ERROR')
+                installed_deps = True
+                return
+            
+            
+            col.label(text="Blender will be unreactive while installing")
+            col.operator("wm.install_rwt_dependencies", icon='IMPORT')
+            col.label(text="This might take a few minutes")
+            col.label(text="After installing, restart Blender", icon='INFO')
+            return
+
         active_obj = context.object
         if not context.object:
             layout.label(text='No active object selected.')
@@ -567,6 +602,31 @@ class SmoothLimit(bpy.types.Operator):
             util.write_weights(obj, limited[:, np.newaxis], ['Limited'])
         return {'FINISHED'}
 
+class InstallDependencies(bpy.types.Operator):
+    """Install missing Python dependencies"""
+    bl_idname = "wm.install_rwt_dependencies"
+    bl_label = "Install Dependencies"
+    
+    def execute(self, context):
+        python_exe = sys.executable
+        print(python_exe)
+        
+        global libs_path
+        if not os.path.exists(libs_path):
+            os.makedirs(libs_path)
+        try:
+            subprocess.check_call([python_exe, "-m", "ensurepip"])
+            subprocess.check_call([
+                python_exe, "-m", "pip", "install", "--no-deps", 
+                *missing_deps, "--target", libs_path
+            ])
+            self.report({'INFO'}, "Installation successful! Please restart Blender.")
+            global installed_deps
+            installed_deps = True
+            return {'FINISHED'}
+        except subprocess.CalledProcessError as e:
+            self.report({'ERROR'}, f"Installation failed: {str(e)}")
+            return {'CANCELLED'}
 
 class SentFromSpacePanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
@@ -686,6 +746,7 @@ def register():
     bpy.utils.register_class(ResetSceneSettings)
     bpy.utils.register_class(UtilitiesPanel)
     bpy.utils.register_class(SmoothLimit)
+    bpy.utils.register_class(InstallDependencies)
     bpy.types.Object.robust_weight_transfer_settings = bpy.props.PointerProperty(type=ObjectSettingsGroup)
     bpy.types.Scene.robust_weight_transfer_settings = bpy.props.PointerProperty(type=SceneSettingsGroup)
     
@@ -712,6 +773,7 @@ def unregister():
     bpy.utils.unregister_class(ResetSceneSettings)
     bpy.utils.unregister_class(UtilitiesPanel)
     bpy.utils.unregister_class(SmoothLimit)
+    bpy.utils.unregister_class(InstallDependencies)
     del bpy.types.Object.robust_weight_transfer_settings
     del bpy.types.Scene.robust_weight_transfer_settings
     SentFromSpacePanel._unregister()
