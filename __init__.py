@@ -3,7 +3,7 @@ bl_info = {
     "author": "sentfromspacevr",
     "version": (1, 0),
     "blender": (2, 93, 0),
-    "doc_url": "https://sentfromspacevr.gumroad.com/l/robust-weight-transfer",
+    "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
     "category": "Object",
 }
@@ -22,6 +22,8 @@ import numpy as np
 from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
 import webbrowser
 import math
+
+import bpy.utils.previews
 
 from . import util
 
@@ -539,20 +541,30 @@ class SentFromSpacePanel(bpy.types.Panel):
     bl_order = 1000
     version = 0
     registered_panel  = False
+    pcoll = None
     
-    # Operator to open Gumroad
-    class OpenGumroadOperator(bpy.types.Operator):
-        """Open Gumroad in the web browser"""
-        bl_idname = "wm.open_gumroad"
-        bl_label = "Gumroad"
+    class OpenThirdOperator(bpy.types.Operator):
+        """Open Third in the web browser"""
+        bl_idname = "wm.open_third"
+        bl_label = "third3d.com"
 
         def execute(self, context):
-            webbrowser.open("https://gumroad.com/sentfromspacevr")
+            webbrowser.open("https://third3d.com/")
+            return {'FINISHED'}
+
+    # Operator to open Jinxxy
+    class OpenJinxxyOperator(bpy.types.Operator):
+        """Open Jinxxy in the web browser"""
+        bl_idname = "wm.open_gumroad"
+        bl_label = "Jinxxy"
+
+        def execute(self, context):
+            webbrowser.open("https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer")
             return {'FINISHED'}
         
-    # Operator to open Gumroad
+    # Operator to open Discord
     class OpenDiscordOperator(bpy.types.Operator):
-        """Open Gumroad in the web browser"""
+        """Open Discord in the web browser"""
         bl_idname = "wm.open_discord"
         bl_label = "Discord"
 
@@ -583,29 +595,41 @@ class SentFromSpacePanel(bpy.types.Panel):
     @classmethod
     def _register(cls):
         cls.registered_panel = True
-        bpy.utils.register_class(cls.OpenGumroadOperator)
+        bpy.utils.register_class(cls.OpenThirdOperator)
+        bpy.utils.register_class(cls.OpenJinxxyOperator)
         bpy.utils.register_class(cls.OpenDiscordOperator)
         bpy.utils.register_class(cls.OpenTwitterOperator)
         bpy.utils.register_class(cls.OpenGitHubOperator)
         bpy.utils.register_class(cls)
+
+        logo_path = os.path.join(os.path.dirname(__file__), "third-logo-icon.png")
+        img = bpy.data.images.load(logo_path, check_existing=True)
+        
+        pcoll = bpy.utils.previews.new()
+        pcoll.load("third_logo", logo_path, "IMAGE")
+        cls.pcoll = pcoll
+        
     
     @classmethod
     def _unregister(cls):
         if cls.registered_panel:
             cls.registered_panel = False
-            bpy.utils.unregister_class(cls.OpenGumroadOperator)
+            bpy.utils.unregister_class(cls.OpenThirdOperator)
+            bpy.utils.unregister_class(cls.OpenJinxxyOperator)
             bpy.utils.unregister_class(cls.OpenDiscordOperator)
             bpy.utils.unregister_class(cls.OpenTwitterOperator)
             bpy.utils.unregister_class(cls.OpenGitHubOperator)
             bpy.utils.unregister_class(cls)
+            bpy.utils.previews.remove(cls.pcoll)
     
         
     def draw(self, context):
         layout = self.layout
+        layout.operator("wm.open_third", text="third3d.com   ", icon_value=self.__class__.pcoll["third_logo"].icon_id)
         col = layout.column(align=True)
         row = col.row(align=True)
         row.operator("wm.open_discord", text="Discord")
-        row.operator("wm.open_gumroad", text="Gumroad")
+        row.operator("wm.open_gumroad", text="Jinxxy")
         row = col.row(align=True)
         row.operator("wm.open_twitter", text="Twitter")
         row.operator("wm.open_github", text="GitHub")
