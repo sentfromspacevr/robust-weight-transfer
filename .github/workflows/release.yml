@@ -31,7 +31,7 @@ jobs:
           platforms=("win_amd64" "macosx_12_0_arm64" "macosx_10_13_x86_64" "manylinux2014_x86_64")
           platform_names=("windows" "macos-m" "macos-intel" "linux")
           python_versions=("310" "311" "39")
-          python_versions_labels=("bl3.1-4.0" "bl4.1" "bl2.9-3.0")
+          python_versions_labels=("bl3.1-4.0" "bl4.1-4.4+" "bl2.9-3.0")
           gh release create ${{ github.ref_name }} -R ${{ github.repository }}
 
           for i in "${!platforms[@]}"; do
