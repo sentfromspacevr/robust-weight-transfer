@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Robust Weight Transfer",
     "author": "sentfromspacevr",
-    "version": (1, 1, 1),
+    "version": (1, 1, 3),
     "blender": (2, 93, 0),
     "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
@@ -41,6 +41,7 @@ for module in DEPENDENCIES:
 installed_deps = False
 
 if not missing_deps:
+    import igl
     from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
     from . import util
 
