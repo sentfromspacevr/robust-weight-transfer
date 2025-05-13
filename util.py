@@ -50,6 +50,9 @@ def get_groups_arr(obj: bpy.types.Object, include_groups: list[bool]=None):
     for i, v in enumerate(mesh.vertices):
         current_vertex = arr[i]
         for g in v.groups:
+            if g.group >= arr.shape[1]:
+                print(f"WARNING: group index {g.group} out of bounds ({arr.shape[1]} vertex groups) for vertex {i}")
+                continue
             if include_groups and include_groups[g.group]:
                 current_vertex[g.group] = g.weight
             elif not include_groups:
