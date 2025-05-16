@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Robust Weight Transfer",
     "author": "sentfromspacevr",
-    "version": (1, 1, 3),
+    "version": (1, 1, 5),
     "blender": (2, 93, 0),
     "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
@@ -34,7 +34,7 @@ for module in DEPENDENCIES:
         importlib.import_module(module)
     except ImportError:
         if module == "igl":
-            missing_deps.append("libigl")
+            missing_deps.append("libigl==2.5.1")
         else:
             missing_deps.append(module)
 
