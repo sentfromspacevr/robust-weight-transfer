@@ -1,8 +1,52 @@
-# This code is based on https://github.com/rin-23/RobustSkinWeightsTransferCode/blob/main/src/utils.py
-# by Rinat Abdrashitov (MIT License)
-# 
+# This file is part of Robust Weight Transfer for Blender.
+#
+# Portions of this code are based on:
+#   RobustSkinWeightsTransferCode (https://github.com/rin-23/RobustSkinWeightsTransferCode/blob/main/src/utils.py)
+#   by Rinat Abdrashitov, used under the MIT License (see below).
+#
 # Changes were made to make the code compatible with Blender's data structures
-# and to improve performance and robustness
+# and to improve performance and robustness.
+#
+# Copyright (C) 2025 sentfromspacevr
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# Attribution: Developed by sentfromspacevr (https://github.com/sentfromspacevr)
+#
+# ---- Original MIT License Notice Follows ----
+#
+# The following portions of this file are based on work by Rinat Abdrashitov and are licensed under the MIT License:
+#
+# Copyright (c) 2024 Rinat Abdrashitov
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 import igl
 import numpy as np
