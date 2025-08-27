@@ -282,6 +282,59 @@ class SelectNonMatched(bpy.types.Operator):
         self.report({'INFO'}, f'Selected {np.count_nonzero(selects)} out of {selects.shape[0]} vertices.')
 
         return {'FINISHED'}
+    
+class Inpaint(bpy.types.Operator):
+    """Inpaint"""
+    bl_idname = "object.rwt_inpaint"
+    bl_label = "Inpaint"
+    bl_description = "Inpaint active object using the inpaint mask"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    @classmethod
+    def poll(cls, context):
+        scene_settings: SceneSettingsGroup = context.scene.robust_weight_transfer_settings
+        object_settings: ObjectSettingsGroup = context.active_object.robust_weight_transfer_settings
+        
+        if not context.active_object: return False
+        if len(object_settings.inpaint_group) == 0 or object_settings.inpaint_group not in context.active_object.vertex_groups: return False
+        
+        if scene_settings.use_deformed_target and util.has_modifier(context.active_object, *util.TOPOLOGY_MODS): return False
+        return True
+
+    def execute(self, context):
+        scene_settings: SceneSettingsGroup = context.scene.robust_weight_transfer_settings
+        obj = context.active_object
+        object_settings: ObjectSettingsGroup = obj.robust_weight_transfer_settings
+        
+        depsgraph = context.evaluated_depsgraph_get()
+        verts, triangles, normals = util.get_obj_arrs_world(obj.evaluated_get(depsgraph) if scene_settings.use_deformed_target else obj)
+        is_deform = [util.is_vertex_group_deform_bone(obj, g.name) for g in obj.vertex_groups]
+        weights = util.get_groups_arr(obj, is_deform)
+
+        inpaint_mask = util.get_group_arr(obj, object_settings.inpaint_group)
+        inpaint_mask_bin = inpaint_mask > object_settings.inpaint_threshold
+        result, weights = inpaint(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
+        if not result:
+            self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
+            return {'CANCELLED'}
+
+        for i, w in enumerate(weights.T):
+            group = obj.vertex_groups[i]
+            if group.lock_weight: continue
+            
+            if not is_deform[i]: continue
+            
+            w_count = np.count_nonzero(w)
+            if w_count == 0: continue
+
+            for j, wv in enumerate(w):
+                if wv >= 0.00001:
+                    group.add([j], wv, 'REPLACE')
+        
+            ind = np.where(w < 0.00001)[0].tolist()
+            group.remove(ind)  
+        self.report({'INFO'}, f'Weights inpainted.')
+        return {'FINISHED'}
         
 
 class ObjectSettingsGroup(bpy.types.PropertyGroup):
@@ -589,6 +642,7 @@ class UtilitiesPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator('object.smooth_limit_weights')
         row.prop(settings, 'smooth_limit_debug', text='', icon='GROUP_VERTEX')
+        layout.operator('object.rwt_inpaint')
     
 
 class SmoothLimit(bpy.types.Operator):
@@ -767,6 +821,7 @@ def register():
         bpy.utils.register_class(ResetSceneSettings)
         bpy.utils.register_class(UtilitiesPanel)
         bpy.utils.register_class(SmoothLimit)
+        bpy.utils.register_class(Inpaint)
         bpy.types.Object.robust_weight_transfer_settings = bpy.props.PointerProperty(type=ObjectSettingsGroup)
         bpy.types.Scene.robust_weight_transfer_settings = bpy.props.PointerProperty(type=SceneSettingsGroup)
         
@@ -796,6 +851,7 @@ def unregister():
         bpy.utils.unregister_class(ResetSceneSettings)
         bpy.utils.unregister_class(UtilitiesPanel)
         bpy.utils.unregister_class(SmoothLimit)
+        bpy.utils.unregister_class(Inpaint)
         del bpy.types.Object.robust_weight_transfer_settings
         del bpy.types.Scene.robust_weight_transfer_settings
     SentFromSpacePanel._unregister()
