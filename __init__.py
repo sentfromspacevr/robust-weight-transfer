@@ -20,7 +20,7 @@
 bl_info = {
     "name": "Robust Weight Transfer",
     "author": "sentfromspacevr",
-    "version": (1, 1, 5),
+    "version": (1, 1, 6),
     "blender": (2, 93, 0),
     "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
@@ -29,10 +29,14 @@ bl_info = {
 
 import sys
 import os
+import re
+
+
 
 libs_path = os.path.join(os.path.dirname(__file__), 'deps')
 if libs_path not in sys.path:
     sys.path.append(libs_path)
+print(sys.path)
 
 import bpy
 import bmesh
@@ -45,6 +49,56 @@ import subprocess
 
 import bpy.utils.previews
 
+# ---- helpers ----
+def _vtuple(v: str):
+    # turn "1.23.5rc1" -> (1,23,5)
+    nums = [int(x) for x in re.findall(r"\d+", v)[:3]]
+    while len(nums) < 3:
+        nums.append(0)
+    return tuple(nums)
+
+def _inc_minor(v: str):
+    major, minor, *_ = [int(x) for x in re.findall(r"\d+", v)[:2] + ["0"]]
+    return f"{major}.{minor+1}"
+
+# ---- compatibility table (from your screenshot) ----
+# Ranges are:  min (inclusive), max (exclusive)
+_RULES = [
+    {"scipy":"1.15", "py":("3.10","3.14"), "np":("1.23.5","2.5.0")},
+    {"scipy":"1.14", "py":("3.10","3.14"), "np":("1.23.5","2.3.0")},
+    {"scipy":"1.13", "py":("3.9","3.13"),  "np":("1.22.4","2.3.0")},
+    {"scipy":"1.12", "py":("3.9","3.13"),  "np":("1.22.4","2.0.0")},
+    {"scipy":"1.11", "py":("3.9","3.13"),  "np":("1.21.6","1.27.0")},
+    {"scipy":"1.10", "py":("3.8","3.12"),  "np":("1.19.5","1.26.0")},
+    {"scipy":"1.9",  "py":("3.8","3.12"),  "np":("1.18.5","1.26.0")},
+    {"scipy":"1.8",  "py":("3.8","3.11"),  "np":("1.17.3","1.24.0")},
+    {"scipy":"1.7",  "py":("3.7","3.11"),  "np":("1.16.5","1.23.0")},
+    {"scipy":"1.6",  "py":("3.7","3.10"),  "np":("1.16.5","1.21.0")},
+    {"scipy":"1.5",  "py":("3.6","3.10"),  "np":("1.14.5","1.20.0")},
+    {"scipy":"1.4",  "py":("3.5","3.9"),   "np":("1.13.3","1.18.0")},
+    {"scipy":"1.2",  "py":("3.4","3.8"),   "np":("1.8.2","1.17.0")},  # (Py 2.7 omitted)
+]
+
+def scipy_spec_for(np_version_str: str, py_version_tuple=None):
+    """
+    Return a pip constraint string like 'scipy>=1.15,<1.16'
+    for the given NumPy version and Python version.
+    """
+    if py_version_tuple is None:
+        py_version_tuple = sys.version_info[:2]  # (major, minor)
+    py_v = (py_version_tuple[0], py_version_tuple[1], 0)
+    np_v = _vtuple(np_version_str)
+
+    def in_range(v, lo, hi):
+        return _vtuple(lo) <= v < _vtuple(hi)
+
+    for rule in _RULES:  # newest-first
+        if in_range(py_v, *rule["py"]) and in_range(np_v, *rule["np"]):
+            lo = rule["scipy"]
+            hi = _inc_minor(lo)
+            return f"scipy>={lo},<{hi}"
+    return None
+
 
 DEPENDENCIES = ["robust_laplacian", "igl", "scipy"]
 missing_deps = []
@@ -54,10 +108,15 @@ for module in DEPENDENCIES:
     except ImportError:
         if module == "igl":
             missing_deps.append("libigl==2.5.1")
+        elif module == "scipy":
+            scipy_ver = scipy_spec_for(np.__version__)
+            missing_deps.append(scipy_ver)
         else:
             missing_deps.append(module)
 
 installed_deps = False
+
+print(missing_deps)
 
 if not missing_deps:
     import igl
@@ -684,6 +743,7 @@ class InstallDependencies(bpy.types.Operator):
         print(python_exe)
         
         global libs_path
+        print(libs_path)
         if not os.path.exists(libs_path):
             os.makedirs(libs_path)
         try:
