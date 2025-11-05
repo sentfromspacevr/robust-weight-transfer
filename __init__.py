@@ -749,7 +749,7 @@ class InstallDependencies(bpy.types.Operator):
         try:
             subprocess.check_call([python_exe, "-m", "ensurepip"])
             subprocess.check_call([
-                python_exe, "-m", "pip", "install", "--no-deps", 
+                python_exe, "-m", "pip", "install", "--no-deps", "--upgrade",
                 *missing_deps, "--target", libs_path
             ])
             self.report({'INFO'}, "Installation successful! Please restart Blender.")
