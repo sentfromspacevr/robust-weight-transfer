@@ -20,7 +20,7 @@
 bl_info = {
     "name": "Robust Weight Transfer",
     "author": "sentfromspacevr",
-    "version": (1, 1, 6),
+    "version": (1, 1, 7),
     "blender": (2, 93, 0),
     "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
@@ -53,7 +53,7 @@ for module in DEPENDENCIES:
         importlib.import_module(module)
     except ImportError:
         if module == "igl":
-            missing_deps.append("libigl==2.5.1")
+            missing_deps.append("libigl==2.6.1")
         else:
             missing_deps.append(module)
 
@@ -147,9 +147,10 @@ class RobustWeightTransfer(bpy.types.Operator):
                     self.report({'ERROR'}, f'{obj.name} has too many vertex colors. Delete one or deactive Visualize Rejected Weights.')
                     return {'CANCELLED'}
 
-                
-            result, weights = inpaint(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
-            if not result:
+            try:
+                weights = inpaint(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
+            except Exception as e:
+                print(e)
                 self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
                 return {'CANCELLED'}
             
@@ -315,8 +316,10 @@ class Inpaint(bpy.types.Operator):
 
         inpaint_mask = util.get_group_arr(obj, object_settings.inpaint_group)
         inpaint_mask_bin = inpaint_mask > object_settings.inpaint_threshold
-        result, weights = inpaint(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
-        if not result:
+        try:
+            weights = inpaint(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
+        except Exception as e:
+            print(e)
             self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
             return {'CANCELLED'}
 
