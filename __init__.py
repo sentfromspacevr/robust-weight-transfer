@@ -688,12 +688,11 @@ class InstallDependencies(bpy.types.Operator):
         python_exe = sys.executable
         print(python_exe)
         try:
-            subprocess.check_call([python_exe, "-m", "ensurepip"])
             # we do a pip user install under a custom user base path
             # makes use of existing installed python packages like numpy, still uses pips dependency resolution and keeps it isolated
             env = os.environ.copy()
             env["PYTHONUSERBASE"] = libs_path
-            subprocess.check_call([python_exe, "-m", "pip", "install", "--user", *missing_deps], env=env)
+            subprocess.check_call([python_exe, "-m", "pip", "install", "--user", *missing_deps, "--break-system-packages"], env=env)
             self.report({'INFO'}, "Installation successful! Please restart Blender.")
             global installed_deps
             installed_deps = True
