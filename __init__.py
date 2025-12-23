@@ -688,11 +688,16 @@ class InstallDependencies(bpy.types.Operator):
         python_exe = sys.executable
         print(python_exe)
         try:
+            # create a constraints.txt to constrain the dependency install to the numpy version that blender ships with
+            constraints_path = os.path.join(os.path.dirname(__file__), "constraints.txt")
+            with open(constraints_path, "w") as f:
+                f.write(f"numpy=={np.__version__}") 
+
             # we do a pip user install under a custom user base path
             # makes use of existing installed python packages like numpy, still uses pips dependency resolution and keeps it isolated
             env = os.environ.copy()
             env["PYTHONUSERBASE"] = libs_path
-            subprocess.check_call([python_exe, "-m", "pip", "install", "--user", *missing_deps, "--break-system-packages"], env=env)
+            subprocess.check_call([python_exe, "-m", "pip", "install", "--user", *missing_deps, "--break-system-packages", "-c", constraints_path], env=env)
             self.report({'INFO'}, "Installation successful! Please restart Blender.")
             global installed_deps
             installed_deps = True
