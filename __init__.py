@@ -20,8 +20,8 @@
 bl_info = {
     "name": "Robust Weight Transfer",
     "author": "sentfromspacevr",
-    "version": (1, 1, 6),
-    "blender": (2, 93, 0),
+    "version": (1, 1, 8),
+    "blender": (3, 1, 0),
     "doc_url": "https://jinxxy.com/SentFromSpaceVR/robust-weight-transfer",
     "location": "View3D > Sidebar > SENT Tab",
     "category": "Object",
