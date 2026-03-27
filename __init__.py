@@ -688,7 +688,8 @@ class InstallDependencies(bpy.types.Operator):
             # create a constraints.txt to constrain the dependency install to the numpy version that blender ships with
             constraints_path = os.path.join(os.path.dirname(__file__), "constraints.txt")
             with open(constraints_path, "w") as f:
-                f.write(f"numpy=={np.__version__}") 
+                f.write(f"numpy=={np.__version__}\n")
+                f.write(f"robust_laplacian==1.0.0\n") 
 
             # we do a pip user install under a custom user base path
             # makes use of existing installed python packages like numpy, still uses pips dependency resolution and keeps it isolated
