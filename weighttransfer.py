@@ -164,6 +164,60 @@ def find_matches_closest_surface(source_verts, source_triangles, source_normals,
     return Matched, W2
 
 
+def connected_components_split(F, num_verts):
+    """
+    Split a mesh into connected components (islands) by topology.
+
+    Returns a list of (vert_indices, local_F) tuples where vert_indices maps
+    island-local vertices back to the original mesh, and local_F is the island's
+    triangle list re-indexed to [0, len(vert_indices)).
+
+    Vertices unreferenced by F are grouped into their own singleton islands so
+    callers can still carry their data through.
+    """
+    num_conn, conn, _ = igl.connected_components(igl.adjacency_matrix(F))
+    referenced = np.zeros(num_verts, dtype=bool)
+    referenced[F.reshape(-1)] = True
+    islands = []
+    for i in range(num_conn):
+        vidx = np.where(conn == i)[0]
+        if len(vidx) == 0:
+            continue
+        vmap = -np.ones(num_verts, dtype=np.int64)
+        vmap[vidx] = np.arange(len(vidx))
+        tri_mask = np.all(vmap[F] >= 0, axis=1)
+        local_F = vmap[F[tri_mask]].astype(F.dtype)
+        islands.append((vidx, local_F))
+    unreferenced = np.where(~referenced)[0]
+    for v in unreferenced:
+        islands.append((np.array([v], dtype=np.int64), np.zeros((0, 3), dtype=F.dtype)))
+    return islands
+
+
+def inpaint_per_island(V2, F2, W2, Matched, point_cloud):
+    """
+    Run `inpaint` independently on each topological island of (V2, F2) so
+    weights cannot bleed between disconnected parts (e.g. left/right sock).
+    Islands with zero matched vertices are left as-is. Returns (result, W)
+    matching the `inpaint` signature; result is False if every island failed
+    or none had any matches.
+    """
+    W_out = W2.astype(np.float32).copy()
+    any_success = False
+    for vidx, local_F in connected_components_split(F2, V2.shape[0]):
+        local_matched = Matched[vidx]
+        if not np.any(local_matched):
+            continue
+        local_V = V2[vidx]
+        local_W = W2[vidx]
+        result, local_out = inpaint(local_V, local_F, local_W, local_matched, point_cloud)
+        if not result:
+            return False, W_out
+        W_out[vidx] = local_out
+        any_success = True
+    return any_success, W_out
+
+
 def inpaint(V2, F2, W2, Matched, point_cloud):
     """
     Inpaint weights for all the vertices on the target mesh for which  we didnt 
