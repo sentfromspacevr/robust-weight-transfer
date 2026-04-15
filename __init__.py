@@ -63,7 +63,7 @@ print(missing_deps)
 
 if not missing_deps:
     import igl
-    from .weighttransfer import find_matches_closest_surface, inpaint, limit_mask, smooth_weigths
+    from .weighttransfer import find_matches_closest_surface, inpaint, inpaint_per_island, limit_mask, smooth_weigths
     from . import util
 
 
@@ -148,7 +148,10 @@ class RobustWeightTransfer(bpy.types.Operator):
                     return {'CANCELLED'}
 
                 
-            result, weights = inpaint(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
+            if scene_settings.isolate_loose_parts:
+                result, weights = inpaint_per_island(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
+            else:
+                result, weights = inpaint(verts, triangles, weights, matched_verts, scene_settings.inpaint_mode == 'POINT')
             if not result:
                 self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
                 return {'CANCELLED'}
@@ -315,7 +318,10 @@ class Inpaint(bpy.types.Operator):
 
         inpaint_mask = util.get_group_arr(obj, object_settings.inpaint_group)
         inpaint_mask_bin = inpaint_mask > object_settings.inpaint_threshold
-        result, weights = inpaint(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
+        if scene_settings.isolate_loose_parts:
+            result, weights = inpaint_per_island(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
+        else:
+            result, weights = inpaint(verts, triangles, weights, ~inpaint_mask_bin, scene_settings.inpaint_mode == 'POINT')
         if not result:
             self.report({'ERROR'}, f'Failed weight inpainting on {obj.name}: This usually happens on loose parts, where vertices are not finding a match on the source mesh. Use Select Rejected Loose Parts to solve the issue.')
             return {'CANCELLED'}
@@ -425,6 +431,10 @@ class SceneSettingsGroup(bpy.types.PropertyGroup):
     smoothing_enable: bpy.props.BoolProperty(
         name='Enable Smoothing',
         description='Smooths weights in the area where weights got inpainted',
+        default=False)
+    isolate_loose_parts: bpy.props.BoolProperty(
+        name='Isolate Loose Parts',
+        description='Inpaint each connected mesh island independently so weights cannot bleed between disconnected parts that happen to be close in space (e.g. left and right sock). Mainly affects Point inpaint mode',
         default=False)
     smooth_limit_debug: bpy.props.BoolProperty(
         name='Limited vertices to Vertex Group',
@@ -549,6 +559,7 @@ class SettingsPanel(bpy.types.Panel):
         settings = context.scene.robust_weight_transfer_settings
         layout.operator('object.rbt_reset_scene_settings', icon='LOOP_BACK', text='Reset to Defaults')
         layout.prop(settings, 'inpaint_mode')
+        layout.prop(settings, 'isolate_loose_parts')
         layout.prop(settings, 'draw_matched')
         row = layout.row()
         row.enabled = not settings.enforce_four_bone_limit
